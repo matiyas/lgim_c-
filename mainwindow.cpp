@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->radioPrzesun, SIGNAL(clicked(bool)), this, SLOT(trybPkt()));
     connect(ui->radioUsun, SIGNAL(clicked(bool)), this, SLOT(trybPkt()));
     connect(ui->verticalSlider, SIGNAL(sliderMoved(int)), this, SLOT(sliderObroc(int)));
+    connect(ui->wypelnij, SIGNAL(clicked(bool)), this, SLOT(slotScanLine(bool)));
     connect(ui->czysc, SIGNAL(clicked(bool)), this, SLOT(reset()));
     timer.start(0);
 
@@ -21,12 +22,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->verticalSlider->hide();
     ui->comboRysuj->addItem("Krzywa Beziera");
     ui->comboRysuj->addItem("Krzywa B-Sklejana");
-    ui->comboRysuj->addItem("Scan Line");
-    ui->comboRysuj->addItem("Rysuj koło");
-    ui->comboRysuj->addItem("Rysuj elipsę");
+    ui->comboRysuj->addItem("Wielokąt");
+    ui->comboRysuj->addItem("Koło");
+    ui->comboRysuj->addItem("Elipsa");
     connect(ui->comboRysuj, SIGNAL(activated(QString)), this, SLOT(trybRysowania(QString)));
 
     rysujWielokat = false;
+    wypelnij = false;
     trybRysowania("Krzywa Beziera");
     trafionyPkt = NULL;
     trybRys = BEZIER;
@@ -59,7 +61,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     czyscEkran();
 
     // Rysuj punkty wybrane przez użytkownika
-    if(trybRys == BEZIER || trybRys == BSKLEJ || trybRys == SCAN_LINE) {
+    if(trybRys == BEZIER || trybRys == BSKLEJ || trybRys == WIELOKAT) {
         for(uint i = 0; i < punkty.size(); ++i)
             rysujKolo((int)punkty[i].x(), (int)punkty[i].y(), 5);
     }
@@ -96,13 +98,20 @@ void MainWindow::paintEvent(QPaintEvent *event)
         }
     }
     // Wielokąt
-    if(trybRys == SCAN_LINE && punkty.size() > 2) {
+    if(trybRys == WIELOKAT && punkty.size() > 2) {
         for(uint i = 0; i < punkty.size() - 1; ++i)
             rysujLinie((int)punkty[i].x(), (int)punkty[i].y(), (int)punkty[i + 1].x(), (int)punkty[i + 1].y());
 
         // Połącz ostatni punkt z pierwszym
         rysujLinie((int)punkty.front().x(), (int)punkty.front().y(), (int)punkty.back().x(), (int)punkty.back().y());
-        scanLine(punkty);
+        ui->wypelnij->setDisabled(false);
+        if(wypelnij)
+            scanLine(punkty);
+    }
+    else
+    {
+        wypelnij = false;
+        ui->wypelnij->setDisabled(true);
     }
 }
 
@@ -129,7 +138,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
      // Jeśli przesuwany lub usuwany jest punkt to znajdź trafiony punkt
      if(trybEdycja == PRZESUN_PKT || trybEdycja == USUN_PKT ||
-             (trybRys == SCAN_LINE && punkty.size() > 2)) {
+             (trybRys == WIELOKAT && punkty.size() > 2)) {
          for(uint i = 0; i < punkty.size(); ++i)
          {
              // Trafiono w punkt +- 5
@@ -168,7 +177,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
-void MainWindow::rysujPiksel(int x, int y)
+void MainWindow::rysujPiksel(int x, int y, int r=0, int g=0, int b=0)
 {
     // Znajdź położenie piksela w tablicy
     if(x <= pixs_w && y <= pixs_h) {
@@ -176,9 +185,9 @@ void MainWindow::rysujPiksel(int x, int y)
 
         // Zmień kolor piksela na czaeny
         if(pos > 0 && pos <= 4 * pixs_w * pixs_h) {
-            pixs[pos] = 0;
-            pixs[pos + 1] = 0;
-            pixs[pos + 2] = 0;
+            pixs[pos] = b;
+            pixs[pos + 1] = g;
+            pixs[pos + 2] = r;
         }
     }
 }
@@ -212,22 +221,32 @@ void MainWindow::rysujLinie(int x0, int y0, int x1, int y1)
             endPy = 2*y0 - y1;
         }
 
+        // Rysowanie linii przechodząc po x
         if(dy < dx) {
             m = dy / (double)dx;
             for(; x <= endPx; x++)
             {
+                // Linia skierowana w prawo
                 if(x1 > x0) {
+                    // Linia skierowana w dół
                     if(y1 > y0)
                         rysujPiksel(x, y);
+
+                    // Linia skierowana w górę
                     else
-                        rysujPiksel(x, 2*y0 - y);
+                        rysujPiksel(x, 2*y0 - y);           // Odbij linię w poziomie
                 }
+                // Linia skierowana w lewo
                 else {
+                    // Linia skierowana w dół
                     if(y1 > y0)
-                        rysujPiksel(2*x0 - x, y);
+                        rysujPiksel(2*x0 - x, y);           // Odbij linię w pionie
+
+                    // Linia skierowana w górę
                     else
-                        rysujPiksel(2*x0 - x, 2*y0 - y);
+                        rysujPiksel(2*x0 - x, 2*y0 - y);    // Odbij linię w poziomie i pionie
                 }
+
 
                 e += m;
                 if(e >= 0.5) {
@@ -236,21 +255,31 @@ void MainWindow::rysujLinie(int x0, int y0, int x1, int y1)
                 }
             }
         }
+
+        // Rysowanie linii przechodząc po y
         else {
             m = dx / (double)dy;
             for(y = y0; y <= endPy; y++)
             {
+                // Linia skierowana w prawo
                 if(x1 > x0) {
+                    // Linia skierowana w dół
                     if(y1 > y0)
                         rysujPiksel(x, y);
+                    // Linia skierowana w górę
                     else
-                        rysujPiksel(x, 2*y0 - y);
+                        rysujPiksel(x, 2*y0 - y);           // Odbij linię w poziomie
                 }
+
+                // Linia skierowana w lewo
                 else {
+                    // Linia skierowana w dół
                     if(y1 > y0)
-                        rysujPiksel(2*x0 - x, y);
+                        rysujPiksel(2*x0 - x, y);           // Odbij linię w pionie
+
+                    // Linia skierowana w górę
                     else
-                        rysujPiksel(2*x0 - x, 2*y0 - y);
+                        rysujPiksel(2*x0 - x, 2*y0 - y);    // Odbij linię w poziomie i pionie
                 }
 
                 e += m;
@@ -429,6 +458,11 @@ void MainWindow::scanLine(std::vector<QPoint> punkty)
     }
 }
 
+void MainWindow::slotScanLine(bool)
+{
+    wypelnij = true;
+}
+
 void MainWindow::radioOdslon()
 {
     ui->radioDodaj->show();
@@ -484,17 +518,17 @@ void MainWindow::trybRysowania(QString wybor)
         radioOdslon();
         ui->verticalSlider->hide();
     }
-    else if(wybor == "Scan Line") {
+    else if(wybor == "Wielokąt") {
         reset();
-        trybRys = SCAN_LINE;
+        trybRys = WIELOKAT;
         radioOdslon();
         ui->wypelnij->show();
         ui->verticalSlider->hide();
     }
-    else if(wybor == "Rysuj koło" || wybor == "Rysuj elipsę") {
+    else if(wybor == "Koło" || wybor == "Elipsa") {
         reset();
 
-        if(wybor == "Rysuj koło") {
+        if(wybor == "Koło") {
             trybRys = KOLO;
             ui->verticalSlider->hide();
         }

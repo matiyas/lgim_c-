@@ -15,7 +15,7 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
-enum Tryb {BEZIER, BSKLEJ, SCAN_LINE, KOLO, ELIPSA, DODAJ_PKT, USUN_PKT, PRZESUN_PKT};
+enum Tryb {BEZIER, BSKLEJ, WIELOKAT, KOLO, ELIPSA, SCAN_LINE, FLOOD_FILL, DODAJ_PKT, USUN_PKT, PRZESUN_PKT};
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -24,7 +24,7 @@ public:
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
-    void rysujPiksel(int x, int y);
+    void rysujPiksel(int x, int y, int r, int g, int b);
     void rysujLinie(int x0, int y0, int x1, int y1);
     void rysujKolo(int x0, int y0, int r);
     void rysujElipse(int x0, int y0, int r1, int r2);
@@ -46,6 +46,7 @@ private:
     QPoint p0, p1, p2, p3, *trafionyPkt;
     std::vector <QPoint> punkty;
     bool rysujWielokat;
+    bool wypelnij;
 
  public slots:
     void reset();
@@ -53,6 +54,7 @@ private:
     void trybRysowania(QString wybor);
     void sliderObroc(int i);
     void scanLine(std::vector <QPoint> punkty);
+    void slotScanLine(bool);
 };
 
 #endif // MAINWINDOW_H

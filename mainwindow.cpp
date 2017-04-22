@@ -488,6 +488,16 @@ void MainWindow::czyscEkran()
     }
 }
 
+int* MainWindow::kolor(int x, int y)
+{
+    int *kolor;
+    int pos = 4 * (y*pixs_w + x);
+
+    kolor = new int[3] {pixs[pos], pixs[pos + 1], pixs[pos + 2]};
+
+    return kolor;
+}
+
 void MainWindow::reset()
 {
     punkty.clear();

@@ -34,6 +34,7 @@ public:
     void radioOdslon();
     void radioSchowaj();
     void czyscEkran();
+    int* kolor(int x, int y);
 
 private:
     Ui::MainWindow *ui;

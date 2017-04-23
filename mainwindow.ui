@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>870</width>
+    <width>897</width>
     <height>612</height>
    </rect>
   </property>
@@ -22,32 +22,6 @@
       <width>631</width>
       <height>601</height>
      </rect>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="czysc">
-    <property name="geometry">
-     <rect>
-      <x>720</x>
-      <y>400</y>
-      <width>80</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>czyść</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="wypelnij">
-    <property name="geometry">
-     <rect>
-      <x>720</x>
-      <y>430</y>
-      <width>80</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>wypełnij</string>
     </property>
    </widget>
    <widget class="QComboBox" name="comboRysuj">
@@ -73,17 +47,17 @@
      <enum>Qt::Vertical</enum>
     </property>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>700</x>
-      <y>160</y>
-      <width>121</width>
-      <height>95</height>
+      <y>163</y>
+      <width>135</width>
+      <height>116</height>
      </rect>
     </property>
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
       <widget class="QRadioButton" name="radioDodaj">
        <property name="text">
         <string>dodaj punkt</string>
@@ -93,17 +67,134 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item row="1" column="0">
       <widget class="QRadioButton" name="radioPrzesun">
        <property name="text">
         <string>przesuń punkt</string>
        </property>
       </widget>
      </item>
-     <item>
+     <item row="2" column="0">
       <widget class="QRadioButton" name="radioUsun">
        <property name="text">
         <string>usuń punkt</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QRadioButton" name="radioWypelnij">
+       <property name="text">
+        <string>wypełnij</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="">
+    <property name="geometry">
+     <rect>
+      <x>720</x>
+      <y>470</y>
+      <width>82</width>
+      <height>60</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="czysc">
+       <property name="text">
+        <string>czyść</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="wypelnij">
+       <property name="text">
+        <string>wypełnij</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="">
+    <property name="geometry">
+     <rect>
+      <x>681</x>
+      <y>314</y>
+      <width>171</width>
+      <height>95</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="wyborKoloru">
+     <item row="0" column="0">
+      <widget class="QLabel" name="colorLabelR">
+       <property name="text">
+        <string>R</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QSlider" name="colorSliderR">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QSpinBox" name="spinBoxR">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="colorLabelG">
+       <property name="text">
+        <string>G</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSlider" name="colorSliderG">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QSpinBox" name="spinBoxG">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="colorLabelB">
+       <property name="text">
+        <string>B</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QSlider" name="colorSliderB">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QSpinBox" name="spinBoxB">
+       <property name="maximum">
+        <number>255</number>
        </property>
       </widget>
      </item>
@@ -115,8 +206,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>870</width>
-     <height>26</height>
+     <width>897</width>
+     <height>23</height>
     </rect>
    </property>
   </widget>

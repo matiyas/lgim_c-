@@ -3,23 +3,37 @@
 #include <QDebug>
 #include <cmath>
 #include <algorithm>
+#include <stack>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    // Update
     connect(&timer, SIGNAL(timeout()), ui->widget, SLOT(update()));
+    timer.start(0);
+
+    // Radio connect
     connect(ui->radioDodaj, SIGNAL(clicked(bool)), this, SLOT(trybPkt()));
     connect(ui->radioPrzesun, SIGNAL(clicked(bool)), this, SLOT(trybPkt()));
     connect(ui->radioUsun, SIGNAL(clicked(bool)), this, SLOT(trybPkt()));
+    connect(ui->radioWypelnij, SIGNAL(clicked(bool)), this, SLOT(trybPkt()));
+
     connect(ui->verticalSlider, SIGNAL(sliderMoved(int)), this, SLOT(sliderObroc(int)));
     connect(ui->wypelnij, SIGNAL(clicked(bool)), this, SLOT(slotScanLine(bool)));
     connect(ui->czysc, SIGNAL(clicked(bool)), this, SLOT(reset()));
-    timer.start(0);
+
+    // Wybór koloru
+    connect(ui->colorSliderR, SIGNAL(sliderMoved(int)), ui->spinBoxR, SLOT(setValue(int)));
+    connect(ui->colorSliderG, SIGNAL(sliderMoved(int)), ui->spinBoxG, SLOT(setValue(int)));
+    connect(ui->colorSliderB, SIGNAL(sliderMoved(int)), ui->spinBoxB, SLOT(setValue(int)));
 
     ui->verticalSlider->setRange(0, 100);
     ui->verticalSlider->hide();
+
+    // Wybór trybu rysowania
     ui->comboRysuj->addItem("Krzywa Beziera");
     ui->comboRysuj->addItem("Krzywa B-Sklejana");
     ui->comboRysuj->addItem("Wielokąt");
@@ -50,6 +64,8 @@ bool MainWindow::pointsCmp(QPoint p1, QPoint p2)
     return (p1.x() > p2.x());
 }
 
+// *********************************************** PaintEvent *********************************************************
+
 void MainWindow::paintEvent(QPaintEvent *event)
 {
     (void)event;
@@ -63,7 +79,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     // Rysuj punkty wybrane przez użytkownika
     if(trybRys == BEZIER || trybRys == BSKLEJ || trybRys == WIELOKAT) {
         for(uint i = 0; i < punkty.size(); ++i)
-            rysujKolo((int)punkty[i].x(), (int)punkty[i].y(), 5);
+            rysujKolo((int)punkty[i].x(), (int)punkty[i].y(), 5, 0, 0, 0);
     }
 
     // Rysuj wybraną figurę
@@ -79,7 +95,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     else if (punkty.size() == 2) {
         if(trybRys == KOLO) {
             int r = sqrt(pow((punkty[0].x() - punkty[1].x()), 2) + pow((punkty[0].y() - punkty[1].y()), 2));
-            rysujKolo(punkty[0].x(), punkty[0].y(), r);
+            rysujKolo(punkty[0].x(), punkty[0].y(), r, 0, 0, 0);
         }
         else if (trybRys == ELIPSA) {
             // Znajdź długośći promieni elipsy
@@ -99,21 +115,33 @@ void MainWindow::paintEvent(QPaintEvent *event)
     }
     // Wielokąt
     if(trybRys == WIELOKAT && punkty.size() > 2) {
+        // Narysuj wielokąt
         for(uint i = 0; i < punkty.size() - 1; ++i)
             rysujLinie((int)punkty[i].x(), (int)punkty[i].y(), (int)punkty[i + 1].x(), (int)punkty[i + 1].y());
 
         // Połącz ostatni punkt z pierwszym
         rysujLinie((int)punkty.front().x(), (int)punkty.front().y(), (int)punkty.back().x(), (int)punkty.back().y());
+
         ui->wypelnij->setDisabled(false);
-        if(wypelnij)
-            scanLine(punkty);
+        ui->radioWypelnij->setDisabled(false);
+
+        if(wypelnij) {
+            if(trybEdycja == FLOOD_FILL)
+                floodFill(startPointFill.x(), startPointFill.y(),
+                          ui->spinBoxR->value(), ui->spinBoxG->value(), ui->spinBoxB->value());
+            else
+                scanLine(punkty);
+        }
     }
     else
     {
         wypelnij = false;
         ui->wypelnij->setDisabled(true);
+        ui->wypelnij->setDisabled(true);
     }
 }
+
+// ************************************************** MouseEvents *****************************************************
 
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
@@ -154,6 +182,10 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
              }
          }
      }
+     if (trybEdycja == FLOOD_FILL && trybRys == WIELOKAT) {
+         wypelnij = true;
+         startPointFill = QPoint(event->x(), event->y());
+     }
 }
 
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
@@ -177,6 +209,8 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
+// ************************************************** Algorytmy *******************************************************
+
 void MainWindow::rysujPiksel(int x, int y, int r=0, int g=0, int b=0)
 {
     // Znajdź położenie piksela w tablicy
@@ -184,7 +218,7 @@ void MainWindow::rysujPiksel(int x, int y, int r=0, int g=0, int b=0)
         int pos = 4 * (y*pixs_w + x);
 
         // Zmień kolor piksela na czaeny
-        if(pos > 0 && pos <= 4 * pixs_w * pixs_h) {
+        if(pos >= 0 && pos < 4 * pixs_w * pixs_h) {
             pixs[pos] = b;
             pixs[pos + 1] = g;
             pixs[pos + 2] = r;
@@ -291,7 +325,7 @@ void MainWindow::rysujLinie(int x0, int y0, int x1, int y1)
         }
 }
 
-void MainWindow::rysujKolo(int x0, int y0, int r)
+void MainWindow::rysujKolo(int x0, int y0, int r, int cR, int cG, int cB)
 {
     if(r > 0){
         for(int x = 0; x <= r; ++x)
@@ -299,20 +333,20 @@ void MainWindow::rysujKolo(int x0, int y0, int r)
             int y = (int)floor(sqrt(r*r - x*x));
 
             // Prawy góra
-            rysujPiksel(y + x0, -x + y0);
-            rysujPiksel(x + x0, -y + y0);
+            rysujPiksel(y + x0, -x + y0, cR, cG, cB);
+            rysujPiksel(x + x0, -y + y0, cR, cG, cB);
 
             // Lewy góra
-            rysujPiksel(-y + x0, -x + y0);
-            rysujPiksel(-x + x0, -y + y0);
+            rysujPiksel(-y + x0, -x + y0, cR, cG, cB);
+            rysujPiksel(-x + x0, -y + y0, cR, cG, cB);
 
             // Prawy dół
-            rysujPiksel(y + x0, x + y0);
-            rysujPiksel(x + x0, y + y0);
+            rysujPiksel(y + x0, x + y0, cR, cG, cB);
+            rysujPiksel(x + x0, y + y0, cR, cG, cB);
 
             // Lewy dół
-            rysujPiksel(-y + x0, x + y0);
-            rysujPiksel(-x + x0, y + y0);
+            rysujPiksel(-y + x0, x + y0, cR, cG, cB);
+            rysujPiksel(-x + x0, y + y0, cR, cG, cB);
         }
     }
 }
@@ -363,7 +397,8 @@ void MainWindow::rysujKrzywaBSklejana(QPoint p0, QPoint p1, QPoint p2, QPoint p3
     double t = 0;
     for(int i = 0; i <= 100; ++i)
     {
-        QPoint pkt = ((-p0 + 3*p1 - 3*p2 + p3) * t*t*t + (3*p0 - 6*p1 + 3*p2) * t*t + (-3*p0 + 3*p2) * t + (p0 + 4*p1 + p2)) / 6;
+        QPoint pkt = ((-p0 + 3*p1 - 3*p2 + p3) * t*t*t + (3*p0 - 6*p1 + 3*p2) * t*t +
+                      (-3*p0 + 3*p2) * t + (p0 + 4*p1 + p2)) / 6;
 
         if( i > 0)
             rysujLinie((int)pkt.x(), (int)pkt.y(), (int)tmp.x(), (int)tmp.y());
@@ -458,6 +493,8 @@ void MainWindow::scanLine(std::vector<QPoint> punkty)
     }
 }
 
+// ************************************************** Reszta **********************************************************
+
 void MainWindow::slotScanLine(bool)
 {
     wypelnij = true;
@@ -468,6 +505,7 @@ void MainWindow::radioOdslon()
     ui->radioDodaj->show();
     ui->radioPrzesun->show();
     ui->radioUsun->show();
+    ui->radioWypelnij->show();
 }
 
 void MainWindow::radioSchowaj()
@@ -475,6 +513,7 @@ void MainWindow::radioSchowaj()
     ui->radioDodaj->hide();
     ui->radioPrzesun->hide();
     ui->radioUsun->hide();
+    ui->radioWypelnij->hide();
 }
 
 void MainWindow::czyscEkran()
@@ -490,17 +529,49 @@ void MainWindow::czyscEkran()
 
 int* MainWindow::kolor(int x, int y)
 {
-    int *kolor;
     int pos = 4 * (y*pixs_w + x);
+    if(pos < 0 || pos >= 4 * pixs_w * pixs_h)
+        return NULL;
 
-    kolor = new int[3] {pixs[pos], pixs[pos + 1], pixs[pos + 2]};
+    return new int[3]{pixs[pos + 2], pixs[pos + 1], pixs[pos]};
+}
 
-    return kolor;
+void MainWindow::floodFill(int x0, int y0, int r, int g, int b)
+{
+    std::stack <QPoint> Q;
+    Q.push(QPoint(x0, y0));
+    int oldR, oldG, oldB;
+
+    oldR = kolor(x0, y0)[0];
+    oldG = kolor(x0, y0)[1];
+    oldB = kolor(x0, y0)[2];
+
+    while(Q.size())
+    {
+        int x = (int)Q.top().x();
+        int y = (int)Q.top().y();
+        Q.pop();
+
+        int *k = kolor(x, y);
+
+        if(kolor(x, y) != NULL) {
+            if(k[0] == oldR && k[1] == oldG && k[2] == oldB) {
+                rysujPiksel(x, y, r, g, b);
+                Q.push(QPoint(x - 1, y));
+                Q.push(QPoint(x + 1, y));
+                Q.push(QPoint(x, y + 1));
+                Q.push(QPoint(x, y - 1));
+            }
+        }
+        delete(k);
+    }
 }
 
 void MainWindow::reset()
 {
     punkty.clear();
+    wypelnij = false;
+    rysujWielokat = false;
     czyscEkran();
 }
 
@@ -512,6 +583,9 @@ void MainWindow::trybPkt()
         trybEdycja = PRZESUN_PKT;
     else if(ui->radioUsun->isChecked())
         trybEdycja = USUN_PKT;
+    else if (ui->radioWypelnij->isChecked()) {
+        trybEdycja = FLOOD_FILL;
+    }
 }
 
 void MainWindow::trybRysowania(QString wybor)
@@ -521,12 +595,14 @@ void MainWindow::trybRysowania(QString wybor)
         trybRys = BEZIER;
         radioOdslon();
         ui->verticalSlider->hide();
+        ui->wyborKoloru->parentWidget()->hide();
     }
     else if (wybor == "Krzywa B-Sklejana") {
         reset();
         trybRys = BSKLEJ;
         radioOdslon();
         ui->verticalSlider->hide();
+        ui->wyborKoloru->parentWidget()->hide();
     }
     else if(wybor == "Wielokąt") {
         reset();
@@ -534,6 +610,7 @@ void MainWindow::trybRysowania(QString wybor)
         radioOdslon();
         ui->wypelnij->show();
         ui->verticalSlider->hide();
+        ui->wyborKoloru->parentWidget()->show();
     }
     else if(wybor == "Koło" || wybor == "Elipsa") {
         reset();
@@ -548,6 +625,7 @@ void MainWindow::trybRysowania(QString wybor)
         }
 
         radioSchowaj();
+        ui->wyborKoloru->parentWidget()->hide();
         trybEdycja = DODAJ_PKT;
         ui->radioDodaj->setChecked(true);
     }
